@@ -16,3 +16,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
       - name: Core tests
         run: ./gradlew :core:test
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
