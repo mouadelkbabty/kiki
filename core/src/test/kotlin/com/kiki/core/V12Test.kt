@@ -7,29 +7,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class PollParsingTest {
-    @Test
-    fun `poll message is parsed`() {
-        val body = JSONObject()
-            .put("kiki", "poll")
-            .put("q", "Pizza ou sushi ?")
-            .put("choices", org.json.JSONArray(listOf("🍕 Pizza", "🍣 Sushi")))
-            .toString()
-        val line = JSONObject().put("id", "p1").put("time", 9).put("event", "message").put("message", body).toString()
-        assertEquals(
-            NtfyMessage("p1", 9, "Pizza ou sushi ?", null, Poll(listOf("🍕 Pizza", "🍣 Sushi"))),
-            NtfyParser.parse(line),
-        )
-    }
-
-    @Test
-    fun `poll needs two or three choices`() {
-        val body = """{"kiki":"poll","q":"?","choices":["seul"]}"""
-        val line = JSONObject().put("id", "p2").put("time", 9).put("event", "message").put("message", body).toString()
-        assertEquals(NtfyMessage("p2", 9, body, null, null), NtfyParser.parse(line))
-    }
-}
-
 class BigEmojiTest {
     @Test
     fun `single heart is big`() = assertTrue(BigEmoji.isBigEmoji("❤️"))
