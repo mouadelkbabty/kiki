@@ -10,6 +10,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.kiki.core.Backoff
+import com.kiki.core.BubbleController
 import com.kiki.core.NtfyMessage
 import com.kiki.core.StartupPicker
 
@@ -24,9 +25,20 @@ class ListenerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private val bubble by lazy {
+        val overlay = BubbleOverlay(this)
+        BubbleController(overlay, HandlerScheduler(mainHandler)).also { controller ->
+            overlay.onKey = { controller.onUserKey() }
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, notification())
+        if (intent?.action == ACTION_TEST) {
+            bubble.onMessage(NtfyMessage("test", System.currentTimeMillis() / 1000, "Ceci est un test 👋"))
+        }
         val topic = Prefs(this).topic
+        if (topic == null && intent?.action == ACTION_TEST) return START_NOT_STICKY
         if (topic == null) {
             Log.w(TAG, "no topic configured")
             stopSelf()
@@ -85,7 +97,7 @@ class ListenerService : Service() {
 
     /** Runs on the main thread. */
     private fun showMessage(message: NtfyMessage) {
-        Log.i(TAG, "message ${message.id}: ${message.text}")
+        bubble.onMessage(message)
     }
 
     private fun notification(): Notification {
@@ -100,6 +112,7 @@ class ListenerService : Service() {
     }
 
     companion object {
+        const val ACTION_TEST = "com.kiki.tv.TEST"
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1
