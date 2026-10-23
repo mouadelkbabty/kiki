@@ -20,7 +20,7 @@ class MainActivity : Activity() {
     private val refresh = object : Runnable {
         override fun run() {
             status.text = when {
-                Prefs(this@MainActivity).topic == null -> "Pas configuré"
+                Prefs(this@MainActivity).code == null -> "Pas configuré"
                 ListenerStatus.connected -> "Connecté"
                 else -> "Reconnexion…"
             }
@@ -53,7 +53,7 @@ class MainActivity : Activity() {
             },
         )
         test.requestFocus()
-        if (Prefs(this).topic != null) startForegroundService(Intent(this, ListenerService::class.java))
+        if (Prefs(this).code != null) startForegroundService(Intent(this, ListenerService::class.java))
     }
 
     override fun onResume() {

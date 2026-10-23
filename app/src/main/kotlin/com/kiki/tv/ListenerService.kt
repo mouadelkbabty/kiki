@@ -34,6 +34,9 @@ class ListenerService : Service() {
     private val emojiOverlay by lazy { EmojiOverlay(this) }
     private var replies: NtfyPublisher? = null
 
+    @Volatile
+    private var key: ByteArray? = null
+
     private val bubble by lazy {
         BubbleController(overlay, HandlerScheduler(mainHandler)).also { controller ->
             overlay.onDismiss = {
@@ -55,21 +58,9 @@ class ListenerService : Service() {
         }
     }
 
-    /** While the screen is on, a small "still here" every 15 min so the page can spot a dead TV. */
-    private val heartbeat = object : Runnable {
-        override fun run() {
-            replies?.publish(Replies.status(on = true, timeSec = nowSec()))
-            mainHandler.postDelayed(this, HEARTBEAT_MS)
-        }
-    }
-
+    /** Also the answer to the page's ping, so the page knows within seconds whether the TV is on. */
     private fun sendStatus(on: Boolean) {
-        mainHandler.removeCallbacks(heartbeat)
-        if (on) {
-            heartbeat.run()
-        } else {
-            replies?.publish(Replies.status(on = false, timeSec = nowSec()))
-        }
+        replies?.publish(Replies.status(on = on, timeSec = nowSec()))
     }
 
     private fun nowSec() = System.currentTimeMillis() / 1000
@@ -79,17 +70,20 @@ class ListenerService : Service() {
         if (intent?.action == ACTION_TEST) {
             bubble.onMessage(NtfyMessage("test", System.currentTimeMillis() / 1000, "Ceci est un test 👋"))
         }
-        val topic = Prefs(this).topic
-        if (topic == null && intent?.action == ACTION_TEST) return START_NOT_STICKY
-        if (topic == null) {
-            Log.w(TAG, "no topic configured")
+        val prefs = Prefs(this)
+        val topic = prefs.topic
+        val key = prefs.key
+        if ((topic == null || key == null) && intent?.action == ACTION_TEST) return START_NOT_STICKY
+        if (topic == null || key == null) {
+            Log.w(TAG, "no code configured")
             stopSelf()
             return START_NOT_STICKY
         }
         if (worker == null) {
             running = true
-            client = NtfyClient(topic)
-            replies = NtfyPublisher(Replies.topicFor(topic))
+            this.key = key
+            client = NtfyClient(topic, key)
+            replies = NtfyPublisher(Replies.topicFor(topic), key)
             registerReceiver(
                 screenReceiver,
                 IntentFilter().apply {
@@ -105,7 +99,6 @@ class ListenerService : Service() {
 
     override fun onDestroy() {
         if (replies != null) unregisterReceiver(screenReceiver)
-        mainHandler.removeCallbacks(heartbeat)
         replies?.shutdown()
         running = false
         client?.close()
@@ -129,6 +122,7 @@ class ListenerService : Service() {
                         backoff.reset()
                         ListenerStatus.connected = true
                     },
+                    onPing = { sendStatus(on = true) },
                     onMessage = { show(it) },
                 )
             } catch (e: Exception) {
@@ -155,7 +149,7 @@ class ListenerService : Service() {
             }
             return
         }
-        val sticker = message.imageUrl?.let { StickerLoader.load(it, STICKER_TARGET_PX) }
+        val sticker = message.imageUrl?.let { url -> key?.let { StickerLoader.load(url, it, STICKER_TARGET_PX) } }
         mainHandler.post {
             overlay.nextSticker = sticker
             bubble.onMessage(message)
@@ -176,7 +170,6 @@ class ListenerService : Service() {
     companion object {
         const val ACTION_TEST = "com.kiki.tv.TEST"
         private const val STICKER_TARGET_PX = 200
-        private const val HEARTBEAT_MS = 15 * 60 * 1000L
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1

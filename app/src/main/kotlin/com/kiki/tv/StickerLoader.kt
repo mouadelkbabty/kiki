@@ -3,22 +3,26 @@ package com.kiki.tv
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import com.kiki.core.Cipher
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Downloads a sticker and decodes it at roughly [targetPx], to keep memory low. Worker thread only. */
+/** Downloads an encrypted sticker, decrypts it and decodes it at roughly [targetPx]. Worker thread only. */
 object StickerLoader {
     private const val MAX_BYTES = 2_000_000
 
-    fun load(url: String, targetPx: Int): Bitmap? = try {
+    fun load(url: String, key: ByteArray, targetPx: Int): Bitmap? = try {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 30_000
-        val bytes = try {
-            conn.inputStream.use { it.readNBytesCompat(MAX_BYTES) }
+        val sealed = try {
+            conn.inputStream.use { it.readCapped(MAX_BYTES) }
         } finally {
             conn.disconnect()
         }
+        val bytes = Cipher.open(key, sealed) ?: throw IllegalStateException("sticker not sealed with our key")
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         var sample = 1
@@ -29,8 +33,8 @@ object StickerLoader {
         null
     }
 
-    private fun java.io.InputStream.readNBytesCompat(max: Int): ByteArray {
-        val out = java.io.ByteArrayOutputStream()
+    private fun InputStream.readCapped(max: Int): ByteArray {
+        val out = ByteArrayOutputStream()
         val buf = ByteArray(16 * 1024)
         while (out.size() < max) {
             val n = read(buf)

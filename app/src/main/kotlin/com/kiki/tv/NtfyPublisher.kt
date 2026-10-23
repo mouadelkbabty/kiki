@@ -1,12 +1,13 @@
 package com.kiki.tv
 
 import android.util.Log
+import com.kiki.core.Cipher
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-/** Posts small JSON replies to the phone's reply topic, one at a time, off the main thread. */
-class NtfyPublisher(private val topic: String) {
+/** Posts small sealed replies to the phone's reply topic, one at a time, off the main thread. */
+class NtfyPublisher(private val topic: String, private val key: ByteArray) {
     private val executor = Executors.newSingleThreadExecutor()
 
     fun publish(body: String) {
@@ -17,7 +18,7 @@ class NtfyPublisher(private val topic: String) {
                 conn.doOutput = true
                 conn.connectTimeout = 10_000
                 conn.readTimeout = 10_000
-                conn.outputStream.use { it.write(body.toByteArray()) }
+                conn.outputStream.use { it.write(Cipher.sealText(key, body).toByteArray()) }
                 conn.responseCode
                 conn.disconnect()
             } catch (e: Exception) {

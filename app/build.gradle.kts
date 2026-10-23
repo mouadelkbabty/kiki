@@ -11,8 +11,8 @@ android {
         applicationId = "com.kiki.tv"
         minSdk = 30
         targetSdk = 30
-        versionCode = 7
-        versionName = "1.2.1"
+        versionCode = 8
+        versionName = "2.0.0"
     }
 
     // Release signing comes from CI secrets; without them the release build is left unsigned.
