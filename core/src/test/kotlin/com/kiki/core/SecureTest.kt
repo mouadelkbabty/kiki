@@ -118,6 +118,14 @@ class SecureParserTest {
     }
 
     @Test
+    fun `ping line is detected only with the right key`() {
+        val ping = line("g", Cipher.sealText(key, Envelope.ping()))
+        assertTrue(NtfyParser.isPing(ping, key))
+        assertTrue(!NtfyParser.isPing(ping, SecretCode.key("Zbcdefghijklmnopqrstuvwxyz012345")))
+        assertTrue(!NtfyParser.isPing(line("h", Cipher.sealText(key, Envelope.text("x"))), key))
+    }
+
+    @Test
     fun `phone ping is recognised`() =
         assertTrue(Envelope.isPing(Cipher.openText(key, Cipher.sealText(key, Envelope.ping()))!!))
 }

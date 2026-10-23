@@ -13,6 +13,15 @@ object NtfyParser {
         null
     }
 
+    /** True when the line is the phone asking "are you on?", sealed with [key]. */
+    fun isPing(line: String, key: ByteArray): Boolean = try {
+        val json = JSONObject(line)
+        json.optString("event") == "message" &&
+            Cipher.openText(key, json.optString("message"))?.let(Envelope::isPing) == true
+    } catch (e: Exception) {
+        false
+    }
+
     private fun parseOrNull(line: String, key: ByteArray): NtfyMessage? {
         val json = JSONObject(line)
         if (json.optString("event") != "message") return null
