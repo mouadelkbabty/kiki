@@ -128,4 +128,28 @@ class SecureParserTest {
     @Test
     fun `phone ping is recognised`() =
         assertTrue(Envelope.isPing(Cipher.openText(key, Cipher.sealText(key, Envelope.ping()))!!))
+
+    @Test
+    fun `sender name travels inside the encryption`() = assertEquals(
+        "Sara",
+        NtfyParser.parse(line("i", Cipher.sealText(key, Envelope.text("salut", from = "Sara"))), key)!!.from,
+    )
+
+    @Test
+    fun `poll keeps the sender name`() = assertEquals(
+        "Sara",
+        NtfyParser.parse(line("j", Cipher.sealText(key, Envelope.poll("?", listOf("a", "b"), from = "Sara"))), key)!!.from,
+    )
+
+    @Test
+    fun `no or blank sender name gives null`() {
+        assertNull(NtfyParser.parse(line("k", Cipher.sealText(key, Envelope.text("x"))), key)!!.from)
+        assertNull(NtfyParser.parse(line("l", Cipher.sealText(key, Envelope.text("x", from = "   "))), key)!!.from)
+    }
+
+    @Test
+    fun `sender name is trimmed and capped at 20`() = assertEquals(
+        "a".repeat(20),
+        NtfyParser.parse(line("m", Cipher.sealText(key, Envelope.text("x", from = "  " + "a".repeat(30)))), key)!!.from,
+    )
 }

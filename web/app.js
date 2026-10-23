@@ -1,5 +1,6 @@
 const CODE_KEY = "kikiCode";
 const HISTORY_KEY = "kikiHistory2";
+const NAME_KEY = "kikiName";
 const OLD_KEYS = ["kikiTopic", "kikiHistory"]; // before encryption: wiped on load
 const CODE_PATTERN = /^[A-Za-z0-9]{32}$/;
 const MAX = 300;
@@ -123,6 +124,8 @@ async function makeSticker(file) {
 async function deliver(envelope, sticker, label) {
   $("send").disabled = true;
   $("send-poll").disabled = true;
+  const name = $("name").value.trim();
+  if (name) envelope.from = name; // the TV shows "momo" otherwise
   const id = await publish(envelope, sticker);
   if (id) {
     addHistory({ id, label, sent: now() });
@@ -251,6 +254,7 @@ async function showCompose() {
   secret = await deriveSecret(localStorage.getItem(CODE_KEY));
   $("setup").hidden = true;
   $("compose").hidden = false;
+  $("name").value = localStorage.getItem(NAME_KEY) || "";
   renderHistory();
   updateButtons();
   loadReplies();
@@ -303,6 +307,8 @@ $("save").addEventListener("click", () => {
   localStorage.removeItem(HISTORY_KEY);
   showCompose();
 });
+
+$("name").addEventListener("input", () => localStorage.setItem(NAME_KEY, $("name").value.trim()));
 
 $("tab-message").addEventListener("click", () => selectTab(false));
 $("tab-poll").addEventListener("click", () => selectTab(true));

@@ -69,11 +69,13 @@ object Cipher {
 
 /** What travels inside the encryption, from the phone to the TV. */
 object Envelope {
-    fun text(text: String?, sticker: Boolean = false): String =
-        JSONObject().put("type", "msg").put("text", text ?: JSONObject.NULL).put("sticker", sticker).toString()
+    fun text(text: String?, sticker: Boolean = false, from: String? = null): String =
+        JSONObject().put("type", "msg").put("text", text ?: JSONObject.NULL).put("sticker", sticker)
+            .putOpt("from", from).toString()
 
-    fun poll(question: String, choices: List<String>): String =
-        JSONObject().put("type", "poll").put("q", question).put("choices", JSONArray(choices)).toString()
+    fun poll(question: String, choices: List<String>, from: String? = null): String =
+        JSONObject().put("type", "poll").put("q", question).put("choices", JSONArray(choices))
+            .putOpt("from", from).toString()
 
     fun ping(): String = JSONObject().put("type", "ping").toString()
 

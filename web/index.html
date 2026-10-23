@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css?v=2.0.1">
+  <link rel="stylesheet" href="style.css?v=2.1.0">
 </head>
 <body>
   <main>
@@ -28,6 +28,8 @@
     </section>
 
     <section id="compose" hidden>
+      <label for="name">Ton nom (affiché sur la télé)</label>
+      <input id="name" maxlength="20" placeholder="momo" autocomplete="off">
       <div class="tabs">
         <button id="tab-message" class="tab active">💬 Message</button>
         <button id="tab-poll" class="tab">📊 Sondage</button>
@@ -67,6 +69,6 @@
       <a href="#" id="change">Changer de code</a>
     </section>
   </main>
-  <script src="app.js?v=2.0.1"></script>
+  <script src="app.js?v=2.1.0"></script>
 </body>
 </html>

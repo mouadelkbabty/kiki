@@ -44,6 +44,8 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
     var nextSticker: Bitmap? = null
 
     private var root: LinearLayout? = null
+    private lateinit var avatar: TextView
+    private lateinit var title: TextView
     private lateinit var time: TextView
     private lateinit var sticker: ImageView
     private lateinit var body: TextView
@@ -55,6 +57,9 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         }
         val fresh = root == null
         val view = root ?: build().also { attach(it) }
+        val name = message.from ?: DEFAULT_NAME
+        title.text = name
+        avatar.text = String(Character.toChars(name.codePointAt(0)))
         time.text = SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(message.time * 1000))
         val image = nextSticker
         nextSticker = null
@@ -128,8 +133,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
     }
 
     private fun build(): LinearLayout {
-        val avatar = TextView(context).apply {
-            text = "m"
+        avatar = TextView(context).apply {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -140,8 +144,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             ).apply { shape = GradientDrawable.OVAL }
             layoutParams = LinearLayout.LayoutParams(dp(44).toInt(), dp(44).toInt())
         }
-        val title = TextView(context).apply {
-            text = "momo"
+        title = TextView(context).apply {
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
@@ -254,6 +257,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
     private companion object {
         const val WIDTH_PX = 680
         const val STICKER_PX = 200
+        const val DEFAULT_NAME = "momo"
         const val FADE_MS = 250L
     }
 }

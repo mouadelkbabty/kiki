@@ -29,6 +29,7 @@ object NtfyParser {
         val body = JSONObject(plain)
         val id = json.getString("id")
         val time = json.getLong("time")
+        val from = MessageText.name(body.optString("from"))
         return when (body.optString("type")) {
             "msg" -> {
                 val text = if (body.isNull("text")) null else MessageText.normalize(body.optString("text"))
@@ -37,13 +38,13 @@ object NtfyParser {
                 } else {
                     null
                 }
-                if (text == null && imageUrl == null) null else NtfyMessage(id, time, text, imageUrl)
+                if (text == null && imageUrl == null) null else NtfyMessage(id, time, text, imageUrl, from = from)
             }
             "poll" -> {
                 val array = body.getJSONArray("choices")
                 val choices = (0 until array.length()).mapNotNull { MessageText.normalize(array.getString(it)) }
                 val question = MessageText.normalize(body.optString("q"))
-                if (question == null || choices.size !in 2..3) null else NtfyMessage(id, time, question, null, Poll(choices))
+                if (question == null || choices.size !in 2..3) null else NtfyMessage(id, time, question, null, Poll(choices), from)
             }
             else -> null
         }
