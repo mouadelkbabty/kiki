@@ -125,6 +125,42 @@ button:disabled { opacity: 0.4; }
   background: #FF6B6B;
 }
 
+.tv {
+  margin-left: auto;
+  font-size: 14px;
+  color: #8C9BB5;
+  text-align: right;
+}
+
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  font-size: 15px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tab.active { background: #2F80FF; }
+
+#poll-pane input { margin-bottom: 10px; }
+#send-poll { width: 100%; margin-top: 4px; }
+
+h2 { margin: 32px 0 8px; font-size: 16px; color: #8C9BB5; font-weight: 600; }
+
+#history { list-style: none; margin: 0; padding: 0; }
+
+#history li {
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+#history .what { display: block; word-break: break-word; }
+#history .state { display: block; margin-top: 4px; font-size: 13px; color: #8C9BB5; }
+#history .state.ok { color: #5BD68A; }
+
 #change {
   display: inline-block;
   margin-top: 28px;

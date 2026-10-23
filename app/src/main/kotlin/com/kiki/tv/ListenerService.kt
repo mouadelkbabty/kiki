@@ -4,7 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Handler
@@ -12,7 +15,9 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.kiki.core.Backoff
+import com.kiki.core.BigEmoji
 import com.kiki.core.BubbleController
+import com.kiki.core.Replies
 import com.kiki.core.NtfyMessage
 import com.kiki.core.StartupPicker
 
@@ -28,12 +33,48 @@ class ListenerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private val overlay by lazy { BubbleOverlay(this) }
+    private val emojiOverlay by lazy { EmojiOverlay(this) }
+    private var replies: NtfyPublisher? = null
 
     private val bubble by lazy {
         BubbleController(overlay, HandlerScheduler(mainHandler)).also { controller ->
-            overlay.onKey = { controller.onUserKey() }
+            overlay.onDismiss = {
+                controller.onUserKey()?.let { replies?.publish(Replies.seen(it.id, nowSec())) }
+            }
+            overlay.onVote = { choice ->
+                controller.onUserKey()?.let { replies?.publish(Replies.vote(it.id, choice, nowSec())) }
+            }
         }
     }
+
+    /** Tells the phone page when the screen turns on or off. */
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_ON -> sendStatus(on = true)
+                Intent.ACTION_SCREEN_OFF -> sendStatus(on = false)
+            }
+        }
+    }
+
+    /** While the screen is on, a small "still here" every 15 min so the page can spot a dead TV. */
+    private val heartbeat = object : Runnable {
+        override fun run() {
+            replies?.publish(Replies.status(on = true, timeSec = nowSec()))
+            mainHandler.postDelayed(this, HEARTBEAT_MS)
+        }
+    }
+
+    private fun sendStatus(on: Boolean) {
+        mainHandler.removeCallbacks(heartbeat)
+        if (on) {
+            heartbeat.run()
+        } else {
+            replies?.publish(Replies.status(on = false, timeSec = nowSec()))
+        }
+    }
+
+    private fun nowSec() = System.currentTimeMillis() / 1000
 
     /**
      * Main thread. A fresh MediaPlayer per ding: this TV's SoundPool fast path stays silent.
@@ -81,12 +122,24 @@ class ListenerService : Service() {
         if (worker == null) {
             running = true
             client = NtfyClient(topic)
+            replies = NtfyPublisher(Replies.topicFor(topic))
+            registerReceiver(
+                screenReceiver,
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_SCREEN_ON)
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                },
+            )
+            sendStatus(on = true)
             worker = Thread({ loop(client!!) }, "kiki-listener").also { it.start() }
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
+        if (replies != null) unregisterReceiver(screenReceiver)
+        mainHandler.removeCallbacks(heartbeat)
+        replies?.shutdown()
         running = false
         client?.close()
         worker?.interrupt()
@@ -128,6 +181,14 @@ class ListenerService : Service() {
     /** Worker thread: fetches the sticker first so the bubble appears complete. */
     private fun show(message: NtfyMessage) {
         Prefs(this).lastShownId = message.id
+        val text = message.text
+        if (text != null && message.imageUrl == null && message.poll == null && BigEmoji.isBigEmoji(text)) {
+            mainHandler.post {
+                emojiOverlay.show(text)
+                ding()
+            }
+            return
+        }
         val sticker = message.imageUrl?.let { StickerLoader.load(it, STICKER_TARGET_PX) }
         mainHandler.post {
             overlay.nextSticker = sticker
@@ -151,6 +212,7 @@ class ListenerService : Service() {
         const val ACTION_TEST = "com.kiki.tv.TEST"
         private const val STICKER_TARGET_PX = 200
         private const val DING_VOLUME = 1.0f
+        private const val HEARTBEAT_MS = 15 * 60 * 1000L
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1

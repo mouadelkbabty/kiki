@@ -19,14 +19,24 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.kiki.core.BubbleDisplay
 import com.kiki.core.NtfyMessage
+import com.kiki.core.Poll
+import com.kiki.core.PollSelection
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /** The bubble drawn on the left of the screen, over any app. Main thread only. */
 class BubbleOverlay(private val context: Context) : BubbleDisplay {
-    /** Called when any remote key is pressed while the bubble has focus. */
-    var onKey: () -> Unit = {}
+    /** The user closed the bubble (any key, or Back on a poll). */
+    var onDismiss: () -> Unit = {}
+
+    /** The user answered the poll with OK. */
+    var onVote: (String) -> Unit = {}
+
+    private var poll: Poll? = null
+    private var selection: PollSelection? = null
+    private lateinit var choicesRow: LinearLayout
+    private lateinit var footer: TextView
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -52,6 +62,10 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         sticker.visibility = if (image != null) View.VISIBLE else View.GONE
         body.text = message.text ?: ""
         body.visibility = if (message.text != null) View.VISIBLE else View.GONE
+        poll = message.poll
+        selection = message.poll?.let { PollSelection(it.choices.size) }
+        renderChoices()
+        footer.text = if (poll != null) "← → choisir · OK répondre" else "OK · fermer"
         view.animate().cancel()
         if (fresh) view.translationX = -dp(40)
         view.animate().alpha(1f).translationX(0f).setDuration(FADE_MS).setInterpolator(DecelerateInterpolator()).start()
@@ -65,6 +79,52 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         view.animate().alpha(0f).translationX(-dp(40)).setDuration(FADE_MS).withEndAction {
             if (view.isAttachedToWindow) windowManager.removeView(view)
         }.start()
+    }
+
+    /** Keys while the bubble has focus. Returns true when consumed. */
+    private fun handleKey(keyCode: Int): Boolean {
+        val current = poll
+        val sel = selection
+        if (current == null || sel == null) {
+            onDismiss()
+            return true
+        }
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> sel.left().also { renderChoices() }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> sel.right().also { renderChoices() }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> onVote(current.choices[sel.index])
+            KeyEvent.KEYCODE_BACK -> onDismiss()
+        }
+        return true
+    }
+
+    private fun renderChoices() {
+        choicesRow.removeAllViews()
+        val current = poll ?: run {
+            choicesRow.visibility = View.GONE
+            return
+        }
+        choicesRow.visibility = View.VISIBLE
+        current.choices.forEachIndexed { i, choice ->
+            val selected = i == selection?.index
+            choicesRow.addView(
+                TextView(context).apply {
+                    text = choice
+                    setTextColor(Color.WHITE)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+                    setPadding(dp(16).toInt(), dp(8).toInt(), dp(16).toInt(), dp(8).toInt())
+                    background = GradientDrawable().apply {
+                        cornerRadius = dp(20)
+                        setColor(Color.parseColor(if (selected) "#2F80FF" else "#262F80FF"))
+                        setStroke(dp(if (selected) 2 else 1).toInt(), Color.parseColor(if (selected) "#FFFFFF" else "#662F80FF"))
+                    }
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { marginEnd = dp(10).toInt() }
+                },
+            )
+        }
     }
 
     private fun build(): LinearLayout {
@@ -115,7 +175,12 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             setLineSpacing(0f, 1.15f)
             setPadding(0, dp(18).toInt(), 0, dp(20).toInt())
         }
-        val footer = TextView(context).apply {
+        choicesRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, dp(20).toInt())
+            visibility = View.GONE
+        }
+        footer = TextView(context).apply {
             text = "OK · fermer"
             setTextColor(Color.parseColor("#CFE0FF"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -137,6 +202,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             addView(header)
             addView(sticker)
             addView(body)
+            addView(choicesRow)
             addView(footer)
         }
         val accent = View(context).apply {
@@ -160,9 +226,8 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             alpha = 0f
             isFocusable = true
             isFocusableInTouchMode = true
-            setOnKeyListener { _, _, event ->
-                if (event.action == KeyEvent.ACTION_DOWN) onKey()
-                true
+            setOnKeyListener { _, keyCode, event ->
+                if (event.action == KeyEvent.ACTION_DOWN) handleKey(keyCode) else true
             }
             addView(accent)
             addView(content)

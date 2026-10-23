@@ -16,6 +16,7 @@
     <header>
       <div class="logo">k</div>
       <h1>kiki</h1>
+      <span id="tv" class="tv">…</span>
     </header>
 
     <section id="setup" hidden>
@@ -26,22 +27,42 @@
     </section>
 
     <section id="compose" hidden>
-      <div class="quick">
-        <button class="chip" data-text="ana jay">ana jay</button>
-        <button class="chip" data-text="ana khrejt mn lkhdma o jay">ana khrejt mn lkhdma o jay</button>
-        <button class="chip" data-text="7li lbab">7li lbab</button>
+      <div class="tabs">
+        <button id="tab-message" class="tab active">💬 Message</button>
+        <button id="tab-poll" class="tab">📊 Sondage</button>
       </div>
-      <div id="preview" hidden>
-        <img id="sticker" alt="Sticker">
-        <button id="remove" aria-label="Enlever le sticker">✕</button>
+
+      <div id="message-pane">
+        <div class="quick">
+          <button class="chip" data-text="ana jay">ana jay</button>
+          <button class="chip" data-text="ana khrejt mn lkhdma o jay">ana khrejt mn lkhdma o jay</button>
+          <button class="chip" data-text="7li lbab">7li lbab</button>
+        </div>
+        <div id="preview" hidden>
+          <img id="sticker" alt="Sticker">
+          <button id="remove" aria-label="Enlever le sticker">✕</button>
+        </div>
+        <textarea id="message" maxlength="300" placeholder="Ton message… (un emoji seul s'affiche en géant)" rows="4"></textarea>
+        <div class="row">
+          <label class="photo" aria-label="Ajouter une photo">📷<input id="photo" type="file" accept="image/*" hidden></label>
+          <span id="count">0/300</span>
+          <button id="send" disabled>Envoyer</button>
+        </div>
       </div>
-      <textarea id="message" maxlength="300" placeholder="Ton message…" rows="4"></textarea>
-      <div class="row">
-        <label class="photo" aria-label="Ajouter une photo">📷<input id="photo" type="file" accept="image/*" hidden></label>
-        <span id="count">0/300</span>
-        <button id="send" disabled>Envoyer</button>
+
+      <div id="poll-pane" hidden>
+        <input id="question" maxlength="200" placeholder="Ta question… (ex. Pizza ou sushi ?)">
+        <input class="choice" maxlength="40" placeholder="Choix 1 (ex. 🍕 Pizza)">
+        <input class="choice" maxlength="40" placeholder="Choix 2 (ex. 🍣 Sushi)">
+        <input class="choice" maxlength="40" placeholder="Choix 3 (facultatif)">
+        <button id="send-poll" disabled>Envoyer le sondage</button>
       </div>
+
       <p id="status" class="status" hidden></p>
+
+      <h2>Derniers envois</h2>
+      <ul id="history"></ul>
+
       <a href="#" id="change">Changer de code</a>
     </section>
   </main>
