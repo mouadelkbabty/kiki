@@ -3,13 +3,16 @@ package com.kiki.tv
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.kiki.core.BubbleDisplay
@@ -24,8 +27,9 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
     var onKey: () -> Unit = {}
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
+    private val density = context.resources.displayMetrics.density
     private var root: LinearLayout? = null
-    private lateinit var header: TextView
+    private lateinit var time: TextView
     private lateinit var body: TextView
 
     override fun show(message: NtfyMessage) {
@@ -33,11 +37,13 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             Log.w("kiki", "overlay permission missing, message not shown")
             return
         }
+        val fresh = root == null
         val view = root ?: build().also { attach(it) }
-        header.text = "💬 kiki · " + SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(message.time * 1000))
+        time.text = SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(message.time * 1000))
         body.text = message.text
         view.animate().cancel()
-        view.animate().alpha(1f).setDuration(FADE_MS).start()
+        if (fresh) view.translationX = -dp(40)
+        view.animate().alpha(1f).translationX(0f).setDuration(FADE_MS).setInterpolator(DecelerateInterpolator()).start()
         view.requestFocus()
     }
 
@@ -45,35 +51,92 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         val view = root ?: return
         root = null
         view.animate().cancel()
-        view.animate().alpha(0f).setDuration(FADE_MS).withEndAction {
+        view.animate().alpha(0f).translationX(-dp(40)).setDuration(FADE_MS).withEndAction {
             if (view.isAttachedToWindow) windowManager.removeView(view)
         }.start()
     }
 
     private fun build(): LinearLayout {
-        val density = context.resources.displayMetrics.density
-        header = TextView(context).apply {
-            setTextColor(Color.parseColor("#B3FFFFFF"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        val avatar = TextView(context).apply {
+            text = "k"
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#5AA0FF"), Color.parseColor("#2F6BFF")),
+            ).apply { shape = GradientDrawable.OVAL }
+            layoutParams = LinearLayout.LayoutParams(dp(44).toInt(), dp(44).toInt())
+        }
+        val title = TextView(context).apply {
+            text = "kiki"
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+        }
+        time = TextView(context).apply {
+            setTextColor(Color.parseColor("#8C9BB5"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        }
+        val names = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14).toInt(), 0, 0, 0)
+            addView(title)
+            addView(time)
+        }
+        val header = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(avatar)
+            addView(names)
         }
         body = TextView(context).apply {
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
-            setPadding(0, (8 * density).toInt(), 0, (12 * density).toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+            setLineSpacing(0f, 1.15f)
+            setPadding(0, dp(18).toInt(), 0, dp(20).toInt())
         }
         val footer = TextView(context).apply {
-            text = "OK pour fermer"
-            setTextColor(Color.parseColor("#80FFFFFF"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            text = "OK · fermer"
+            setTextColor(Color.parseColor("#CFE0FF"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(dp(14).toInt(), dp(6).toInt(), dp(14).toInt(), dp(6).toInt())
+            background = GradientDrawable().apply {
+                cornerRadius = dp(20)
+                setColor(Color.parseColor("#262F80FF"))
+                setStroke(dp(1).toInt(), Color.parseColor("#662F80FF"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24).toInt(), dp(24).toInt(), dp(28).toInt(), dp(24).toInt())
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(header)
+            addView(body)
+            addView(footer)
+        }
+        val accent = View(context).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.parseColor("#5AA0FF"), Color.parseColor("#2F6BFF")),
+            ).apply { cornerRadius = dp(3) }
+            layoutParams = LinearLayout.LayoutParams(dp(5).toInt(), LinearLayout.LayoutParams.MATCH_PARENT).apply {
+                setMargins(dp(14).toInt(), dp(22).toInt(), 0, dp(22).toInt())
+            }
         }
         return LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = (24 * density).toInt()
-            setPadding(pad, pad, pad, pad)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#CC000000"))
-                cornerRadius = 24 * density
-                setStroke((2 * density).toInt(), Color.parseColor("#2F80FF"))
+            orientation = LinearLayout.HORIZONTAL
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#EB1B2335"), Color.parseColor("#EB0A0C12")),
+            ).apply {
+                cornerRadius = dp(28)
+                setStroke(dp(1).toInt(), Color.parseColor("#402F80FF"))
             }
             alpha = 0f
             isFocusable = true
@@ -82,9 +145,8 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
                 if (event.action == KeyEvent.ACTION_DOWN) onKey()
                 true
             }
-            addView(header)
-            addView(body)
-            addView(footer)
+            addView(accent)
+            addView(content)
         }
     }
 
@@ -103,8 +165,10 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         root = view
     }
 
+    private fun dp(value: Int): Float = value * density
+
     private companion object {
-        const val WIDTH_PX = 640
-        const val FADE_MS = 200L
+        const val WIDTH_PX = 680
+        const val FADE_MS = 250L
     }
 }
