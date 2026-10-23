@@ -40,20 +40,31 @@ class ListenerService : Service() {
             .setMaxStreams(1)
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    // The TV keeps its notification volume near zero; media follows the TV's own volume.
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build(),
             )
             .build()
     }
-    private val dingId by lazy { sounds.load(this, R.raw.ding, 1) }
+    @Volatile
+    private var dingReady = false
+    private val dingId by lazy {
+        sounds.setOnLoadCompleteListener { _, _, status -> dingReady = status == 0 }
+        sounds.load(this, R.raw.ding, 1)
+    }
+
+    /** Main thread. Silent until the sample has finished loading. */
+    private fun ding() {
+        if (dingReady) sounds.play(dingId, DING_VOLUME, DING_VOLUME, 1, 0, 1f)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, notification())
         dingId // loads the sound once, early
         if (intent?.action == ACTION_TEST) {
             bubble.onMessage(NtfyMessage("test", System.currentTimeMillis() / 1000, "Ceci est un test 👋"))
-            sounds.play(dingId, DING_VOLUME, DING_VOLUME, 1, 0, 1f)
+            ding()
         }
         val topic = Prefs(this).topic
         if (topic == null && intent?.action == ACTION_TEST) return START_NOT_STICKY
@@ -116,7 +127,7 @@ class ListenerService : Service() {
         mainHandler.post {
             overlay.nextSticker = sticker
             bubble.onMessage(message)
-            sounds.play(dingId, DING_VOLUME, DING_VOLUME, 1, 0, 1f)
+            ding()
         }
     }
 
@@ -134,7 +145,7 @@ class ListenerService : Service() {
     companion object {
         const val ACTION_TEST = "com.kiki.tv.TEST"
         private const val STICKER_TARGET_PX = 200
-        private const val DING_VOLUME = 0.5f
+        private const val DING_VOLUME = 0.7f
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1
