@@ -23,6 +23,7 @@ class BubbleController(
     private val timeoutMs: Long = 300_000,
 ) {
     private var timer: Cancellable? = null
+    private var current: NtfyMessage? = null
 
     var isShowing = false
         private set
@@ -30,6 +31,7 @@ class BubbleController(
     fun onMessage(m: NtfyMessage) {
         timer?.cancel()
         display.show(m)
+        current = m
         isShowing = true
         lateinit var mine: Cancellable
         mine = scheduler.schedule(timeoutMs) {
@@ -39,13 +41,18 @@ class BubbleController(
         timer = mine
     }
 
-    fun onUserKey() {
-        if (isShowing) hideNow()
+    /** Hides the bubble; returns the message the user dismissed (null if nothing was shown). */
+    fun onUserKey(): NtfyMessage? {
+        if (!isShowing) return null
+        val dismissed = current
+        hideNow()
+        return dismissed
     }
 
     private fun hideNow() {
         timer?.cancel()
         timer = null
+        current = null
         isShowing = false
         display.hide()
     }
