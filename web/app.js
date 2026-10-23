@@ -66,11 +66,15 @@ async function openText(sealed) {
 
 // ---------- sending ----------
 
-/** Publishes a sealed envelope (and optional sealed sticker). Nothing is cached by ntfy. Returns the id or null. */
+/**
+ * Publishes a sealed envelope (and optional sealed sticker). Returns the id or null.
+ * Texts are never cached by ntfy. A sticker must be stored for the TV to download it: ntfy then
+ * keeps the sealed file (unreadable without the code) for at most ~3 hours.
+ */
 async function publish(envelope, sticker) {
   try {
     const url = new URL("https://ntfy.sh/" + secret.topic);
-    url.searchParams.set("cache", "no");
+    if (!sticker) url.searchParams.set("cache", "no");
     const message = await sealText(JSON.stringify(envelope));
     let response;
     if (sticker) {
