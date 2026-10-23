@@ -1,6 +1,7 @@
 package com.kiki.tv
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -13,6 +14,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.kiki.core.BubbleDisplay
@@ -28,8 +30,12 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
+    /** Sticker for the next [show], decoded beforehand off the main thread. */
+    var nextSticker: Bitmap? = null
+
     private var root: LinearLayout? = null
     private lateinit var time: TextView
+    private lateinit var sticker: ImageView
     private lateinit var body: TextView
 
     override fun show(message: NtfyMessage) {
@@ -40,7 +46,12 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         val fresh = root == null
         val view = root ?: build().also { attach(it) }
         time.text = SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(message.time * 1000))
-        body.text = message.text
+        val image = nextSticker
+        nextSticker = null
+        sticker.setImageBitmap(image)
+        sticker.visibility = if (image != null) View.VISIBLE else View.GONE
+        body.text = message.text ?: ""
+        body.visibility = if (message.text != null) View.VISIBLE else View.GONE
         view.animate().cancel()
         if (fresh) view.translationX = -dp(40)
         view.animate().alpha(1f).translationX(0f).setDuration(FADE_MS).setInterpolator(DecelerateInterpolator()).start()
@@ -58,7 +69,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
 
     private fun build(): LinearLayout {
         val avatar = TextView(context).apply {
-            text = "k"
+            text = "m"
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -70,7 +81,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             layoutParams = LinearLayout.LayoutParams(dp(44).toInt(), dp(44).toInt())
         }
         val title = TextView(context).apply {
-            text = "kiki"
+            text = "momo"
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
@@ -90,6 +101,13 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             gravity = Gravity.CENTER_VERTICAL
             addView(avatar)
             addView(names)
+        }
+        sticker = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(STICKER_PX, STICKER_PX).apply {
+                topMargin = dp(18).toInt()
+            }
+            visibility = View.GONE
         }
         body = TextView(context).apply {
             setTextColor(Color.WHITE)
@@ -117,6 +135,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             setPadding(dp(24).toInt(), dp(24).toInt(), dp(28).toInt(), dp(24).toInt())
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             addView(header)
+            addView(sticker)
             addView(body)
             addView(footer)
         }
@@ -169,6 +188,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
 
     private companion object {
         const val WIDTH_PX = 680
+        const val STICKER_PX = 200
         const val FADE_MS = 250L
     }
 }

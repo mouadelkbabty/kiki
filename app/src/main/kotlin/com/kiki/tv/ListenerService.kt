@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -25,17 +27,33 @@ class ListenerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private val overlay by lazy { BubbleOverlay(this) }
+
     private val bubble by lazy {
-        val overlay = BubbleOverlay(this)
         BubbleController(overlay, HandlerScheduler(mainHandler)).also { controller ->
             overlay.onKey = { controller.onUserKey() }
         }
     }
 
+    private val sounds by lazy {
+        SoundPool.Builder()
+            .setMaxStreams(1)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
+            )
+            .build()
+    }
+    private val dingId by lazy { sounds.load(this, R.raw.ding, 1) }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, notification())
+        dingId // loads the sound once, early
         if (intent?.action == ACTION_TEST) {
             bubble.onMessage(NtfyMessage("test", System.currentTimeMillis() / 1000, "Ceci est un test 👋"))
+            sounds.play(dingId, DING_VOLUME, DING_VOLUME, 1, 0, 1f)
         }
         val topic = Prefs(this).topic
         if (topic == null && intent?.action == ACTION_TEST) return START_NOT_STICKY
@@ -91,14 +109,15 @@ class ListenerService : Service() {
         }
     }
 
+    /** Worker thread: fetches the sticker first so the bubble appears complete. */
     private fun show(message: NtfyMessage) {
         Prefs(this).lastShownId = message.id
-        mainHandler.post { showMessage(message) }
-    }
-
-    /** Runs on the main thread. */
-    private fun showMessage(message: NtfyMessage) {
-        bubble.onMessage(message)
+        val sticker = message.imageUrl?.let { StickerLoader.load(it, STICKER_TARGET_PX) }
+        mainHandler.post {
+            overlay.nextSticker = sticker
+            bubble.onMessage(message)
+            sounds.play(dingId, DING_VOLUME, DING_VOLUME, 1, 0, 1f)
+        }
     }
 
     private fun notification(): Notification {
@@ -114,6 +133,8 @@ class ListenerService : Service() {
 
     companion object {
         const val ACTION_TEST = "com.kiki.tv.TEST"
+        private const val STICKER_TARGET_PX = 200
+        private const val DING_VOLUME = 0.5f
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1

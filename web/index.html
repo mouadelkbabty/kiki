@@ -26,8 +26,18 @@
     </section>
 
     <section id="compose" hidden>
-      <textarea id="message" maxlength="300" placeholder="Ton message…" rows="5"></textarea>
+      <div class="quick">
+        <button class="chip" data-text="ana jay">ana jay</button>
+        <button class="chip" data-text="ana khrejt mn lkhdma o jay">ana khrejt mn lkhdma o jay</button>
+        <button class="chip" data-text="7li lbab">7li lbab</button>
+      </div>
+      <div id="preview" hidden>
+        <img id="sticker" alt="Sticker">
+        <button id="remove" aria-label="Enlever le sticker">✕</button>
+      </div>
+      <textarea id="message" maxlength="300" placeholder="Ton message…" rows="4"></textarea>
       <div class="row">
+        <label class="photo" aria-label="Ajouter une photo">📷<input id="photo" type="file" accept="image/*" hidden></label>
         <span id="count">0/300</span>
         <button id="send" disabled>Envoyer</button>
       </div>

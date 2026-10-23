@@ -79,6 +79,52 @@ button:disabled { opacity: 0.4; }
 .status.ok { color: #5BD68A; }
 .status.error { color: #FF6B6B; }
 
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chip {
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  background: rgba(47, 128, 255, 0.15);
+  border: 1px solid rgba(47, 128, 255, 0.45);
+}
+
+.photo {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  border-radius: 50%;
+  font-size: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+#preview {
+  position: relative;
+  width: 140px;
+  margin: 0 auto 16px;
+}
+
+#sticker { width: 140px; height: 140px; display: block; }
+
+#remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 15px;
+  background: #FF6B6B;
+}
+
 #change {
   display: inline-block;
   margin-top: 28px;

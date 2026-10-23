@@ -22,4 +22,30 @@ class NtfyParserTest {
 
     @Test
     fun `blank line is ignored`() = assertNull(NtfyParser.parse(""))
+
+    @Test
+    fun `sticker with text keeps both`() = assertEquals(
+        NtfyMessage("s1", 5, "ana jay", "https://ntfy.sh/file/abc.png"),
+        NtfyParser.parse(
+            """{"id":"s1","time":5,"event":"message","topic":"t","message":"ana jay",""" +
+                """"attachment":{"name":"sticker.png","type":"image/png","url":"https://ntfy.sh/file/abc.png"}}""",
+        ),
+    )
+
+    @Test
+    fun `sticker alone has no text`() = assertEquals(
+        NtfyMessage("s2", 6, null, "https://ntfy.sh/file/def.png"),
+        NtfyParser.parse(
+            """{"id":"s2","time":6,"event":"message","topic":"t","message":"You received a file: sticker.png",""" +
+                """"attachment":{"name":"sticker.png","type":"image/png","url":"https://ntfy.sh/file/def.png"}}""",
+        ),
+    )
+
+    @Test
+    fun `non image attachment is ignored`() = assertNull(
+        NtfyParser.parse(
+            """{"id":"s3","time":7,"event":"message","topic":"t","message":"You received a file: a.pdf",""" +
+                """"attachment":{"name":"a.pdf","type":"application/pdf","url":"https://ntfy.sh/file/a.pdf"}}""",
+        ),
+    )
 }
