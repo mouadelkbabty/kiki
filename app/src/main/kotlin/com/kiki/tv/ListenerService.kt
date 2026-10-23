@@ -8,8 +8,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -76,41 +74,10 @@ class ListenerService : Service() {
 
     private fun nowSec() = System.currentTimeMillis() / 1000
 
-    /**
-     * Main thread. A fresh MediaPlayer per ding: this TV's SoundPool fast path stays silent.
-     * Media usage follows the TV's own volume (its notification volume sits near zero).
-     */
-    private fun ding() {
-        try {
-            val player = MediaPlayer()
-            player.setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build(),
-            )
-            resources.openRawResourceFd(R.raw.ding).use {
-                player.setDataSource(it.fileDescriptor, it.startOffset, it.length)
-            }
-            player.setVolume(DING_VOLUME, DING_VOLUME)
-            player.setOnCompletionListener { it.release() }
-            player.setOnErrorListener { mp, what, extra ->
-                Log.w(TAG, "ding error $what/$extra")
-                mp.release()
-                true
-            }
-            player.setOnPreparedListener { it.start() }
-            player.prepareAsync()
-        } catch (e: Exception) {
-            Log.w(TAG, "ding failed: ${e.message}")
-        }
-    }
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, notification())
         if (intent?.action == ACTION_TEST) {
             bubble.onMessage(NtfyMessage("test", System.currentTimeMillis() / 1000, "Ceci est un test 👋"))
-            ding()
         }
         val topic = Prefs(this).topic
         if (topic == null && intent?.action == ACTION_TEST) return START_NOT_STICKY
@@ -185,7 +152,6 @@ class ListenerService : Service() {
         if (text != null && message.imageUrl == null && message.poll == null && BigEmoji.isBigEmoji(text)) {
             mainHandler.post {
                 emojiOverlay.show(text)
-                ding()
             }
             return
         }
@@ -193,7 +159,6 @@ class ListenerService : Service() {
         mainHandler.post {
             overlay.nextSticker = sticker
             bubble.onMessage(message)
-            ding()
         }
     }
 
@@ -211,7 +176,6 @@ class ListenerService : Service() {
     companion object {
         const val ACTION_TEST = "com.kiki.tv.TEST"
         private const val STICKER_TARGET_PX = 200
-        private const val DING_VOLUME = 1.0f
         private const val HEARTBEAT_MS = 15 * 60 * 1000L
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"

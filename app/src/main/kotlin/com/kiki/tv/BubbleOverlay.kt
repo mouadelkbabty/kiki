@@ -65,7 +65,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
         poll = message.poll
         selection = message.poll?.let { PollSelection(it.choices.size) }
         renderChoices()
-        footer.text = if (poll != null) "← → choisir · OK répondre" else "OK · fermer"
+        footer.text = if (poll != null) "↑ ↓ choisir · OK répondre" else "OK · fermer"
         view.animate().cancel()
         if (fresh) view.translationX = -dp(40)
         view.animate().alpha(1f).translationX(0f).setDuration(FADE_MS).setInterpolator(DecelerateInterpolator()).start()
@@ -90,8 +90,8 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             return true
         }
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_LEFT -> sel.left().also { renderChoices() }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> sel.right().also { renderChoices() }
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_LEFT -> sel.left().also { renderChoices() }
+            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT -> sel.right().also { renderChoices() }
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> onVote(current.choices[sel.index])
             KeyEvent.KEYCODE_BACK -> onDismiss()
         }
@@ -119,9 +119,9 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
                         setStroke(dp(if (selected) 2 else 1).toInt(), Color.parseColor(if (selected) "#FFFFFF" else "#662F80FF"))
                     }
                     layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply { marginEnd = dp(10).toInt() }
+                    ).apply { bottomMargin = dp(10).toInt() }
                 },
             )
         }
@@ -176,7 +176,7 @@ class BubbleOverlay(private val context: Context) : BubbleDisplay {
             setPadding(0, dp(18).toInt(), 0, dp(20).toInt())
         }
         choicesRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+            orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, dp(20).toInt())
             visibility = View.GONE
         }
