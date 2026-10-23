@@ -10,4 +10,8 @@ object StartupPicker {
         if (latest.id == lastShownId) return null
         return latest
     }
+
+    /** Where the live stream resumes: after the newest cached message, else from now (unix seconds). */
+    fun streamSince(messages: List<NtfyMessage>, nowSec: Long): String =
+        messages.maxByOrNull { it.time }?.id ?: nowSec.toString()
 }

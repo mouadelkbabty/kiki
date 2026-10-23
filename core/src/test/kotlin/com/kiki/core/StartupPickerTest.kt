@@ -25,4 +25,15 @@ class StartupPickerTest {
 
     @Test
     fun `empty list gives null`() = assertNull(StartupPicker.pick(emptyList(), now, null))
+
+    @Test
+    fun `stream resumes after newest cached message`() {
+        val messages = listOf(NtfyMessage("a", 99_000, "a"), NtfyMessage("b", 99_500, "b"))
+        assertEquals("b", StartupPicker.streamSince(messages, now))
+    }
+
+    @Test
+    fun `stream starts at current timestamp when cache is empty`() =
+        // ntfy rejects since=now with HTTP 400; a unix timestamp is accepted.
+        assertEquals("100000", StartupPicker.streamSince(emptyList(), now))
 }

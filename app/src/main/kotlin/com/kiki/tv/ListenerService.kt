@@ -66,8 +66,9 @@ class ListenerService : Service() {
         while (running) {
             try {
                 val cached = client.poll("12h")
-                StartupPicker.pick(cached, System.currentTimeMillis() / 1000, prefs.lastShownId)?.let { show(it) }
-                val since = cached.maxByOrNull { it.time }?.id ?: "now"
+                val nowSec = System.currentTimeMillis() / 1000
+                StartupPicker.pick(cached, nowSec, prefs.lastShownId)?.let { show(it) }
+                val since = StartupPicker.streamSince(cached, nowSec)
                 client.stream(
                     since,
                     onOpen = {
