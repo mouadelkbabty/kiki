@@ -6,7 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.media.AudioAttributes
-import android.media.SoundPool
+import android.media.MediaPlayer
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -35,33 +35,38 @@ class ListenerService : Service() {
         }
     }
 
-    private val sounds by lazy {
-        SoundPool.Builder()
-            .setMaxStreams(1)
-            .setAudioAttributes(
+    /**
+     * Main thread. A fresh MediaPlayer per ding: this TV's SoundPool fast path stays silent.
+     * Media usage follows the TV's own volume (its notification volume sits near zero).
+     */
+    private fun ding() {
+        try {
+            val player = MediaPlayer()
+            player.setAudioAttributes(
                 AudioAttributes.Builder()
-                    // The TV keeps its notification volume near zero; media follows the TV's own volume.
                     .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build(),
             )
-            .build()
-    }
-    @Volatile
-    private var dingReady = false
-    private val dingId by lazy {
-        sounds.setOnLoadCompleteListener { _, _, status -> dingReady = status == 0 }
-        sounds.load(this, R.raw.ding, 1)
-    }
-
-    /** Main thread. Silent until the sample has finished loading. */
-    private fun ding() {
-        if (dingReady) sounds.play(dingId, DING_VOLUME, DING_VOLUME, 1, 0, 1f)
+            resources.openRawResourceFd(R.raw.ding).use {
+                player.setDataSource(it.fileDescriptor, it.startOffset, it.length)
+            }
+            player.setVolume(DING_VOLUME, DING_VOLUME)
+            player.setOnCompletionListener { it.release() }
+            player.setOnErrorListener { mp, what, extra ->
+                Log.w(TAG, "ding error $what/$extra")
+                mp.release()
+                true
+            }
+            player.setOnPreparedListener { it.start() }
+            player.prepareAsync()
+        } catch (e: Exception) {
+            Log.w(TAG, "ding failed: ${e.message}")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, notification())
-        dingId // loads the sound once, early
         if (intent?.action == ACTION_TEST) {
             bubble.onMessage(NtfyMessage("test", System.currentTimeMillis() / 1000, "Ceci est un test 👋"))
             ding()
@@ -145,7 +150,7 @@ class ListenerService : Service() {
     companion object {
         const val ACTION_TEST = "com.kiki.tv.TEST"
         private const val STICKER_TARGET_PX = 200
-        private const val DING_VOLUME = 0.7f
+        private const val DING_VOLUME = 1.0f
         private const val TAG = "kiki"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1
