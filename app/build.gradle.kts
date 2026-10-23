@@ -11,8 +11,8 @@ android {
         applicationId = "com.kiki.tv"
         minSdk = 30
         targetSdk = 30
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     // Release signing comes from CI secrets; without them the release build is left unsigned.
@@ -34,6 +34,11 @@ android {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
+    }
+
+    lint {
+        // kiki is side-loaded on an Android 11 TV, never published on Google Play.
+        disable += "ExpiredTargetSdkVersion"
     }
 
     compileOptions {
